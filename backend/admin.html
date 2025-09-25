@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head><title>Admin</title></head>
+<body>
+  <h1>Admin Panel - Deposits & Games</h1>
+  <button onclick="loadData()">Refresh</button>
+  <h2>Pending Deposits</h2>
+  <div id="deposits"></div>
+  <h2>Games (Handle Payouts)</h2>
+  <div id="games"></div>
+  <script>
+    async function loadData() {
+      const resp = await fetch('/admin');
+      const { deposits, games } = await resp.json();
+
+      // Render deposits but keep original indices so server updates correct record
+      document.getElementById('deposits').innerHTML = deposits
+        .map((d, i) => d.status === 'pending' ? `<div>User: ${d.userPubkey?.slice(0,8)}... | Amount: ${d.amount} SOL | <button onclick="confirm('deposit', ${i})">Manual Confirm</button></div>` : '')
+        .join('');
+
+      // Render games that need payout handling (pending_payout). Use original indices.
+      document.getElementById('games').innerHTML = games
+        .map((g, i) => g.status === 'pending_payout' ? `<div>User: ${g.userPubkey?.slice(0,8)}... | Score: ${g.score} | Won: ${g.won ? 'Yes - Payout: ' + g.payout + ' SOL' : 'No'} | <button onclick="confirm('game', ${i})">Mark Paid</button></div>` : '')
+        .join('');
+    }
+
+    async function confirm(type, id) {
+      await fetch(`/admin/confirm/${type}/${id}`, { method: 'POST' });
+      loadData();
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
